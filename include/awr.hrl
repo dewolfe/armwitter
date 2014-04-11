@@ -10,9 +10,10 @@
 
 -define(REQUESTTOKEN, "https://api.twitter.com/oauth/request_token").
 -define(ACCESSTOKEN, "https://api.twitter.com/oauth/access_token").
+-define(STATUSUPDATE,"https://api.twitter.com/1.1/statuses/update.json" ).
 
-
--record(oauth, {oauth_callback = [],
+-record(oauth, {
+  oauth_callback = [],
   oauth_consumer_key = [],
   oauth_nonce = [],
   oauth_signature = [],
@@ -24,3 +25,13 @@
   oauth_token_secret = []
 }
 ).
+
+-record(status_update,{
+  status=[],
+  in_reply_to_status_id=[],
+  lat=[],
+  long=[],
+  place_id=[],
+  display_coordinates=[],
+  trim_user=[]
+}).
