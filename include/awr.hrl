@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
 %%% @author Dominic DeWolfe
-%%% @copyright (C) 2014, Painted Turtle Software
 %%% @doc
 %%%
 %%% @end
