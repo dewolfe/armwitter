@@ -10,6 +10,8 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+    inets:start(),
+    ssl:start(),
     armwitter_sup:start_link().
 
 stop(_State) ->
