@@ -25,12 +25,3 @@
 }
 ).
 
--record(status_update,{
-  status=[],
-  in_reply_to_status_id=[],
-  lat=[],
-  long=[],
-  place_id=[],
-  display_coordinates=[],
-  trim_user=[]
-}).

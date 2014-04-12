@@ -3,7 +3,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0,start_in_shell/0]).
+-export([start_link/0, start_in_shell/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -16,22 +16,29 @@
 %% ===================================================================
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+  supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_in_shell()->
-  {ok,Pid}=supervisor:start_link({local, ?MODULE}, ?MODULE, _Args=[]),
+start_in_shell() ->
+  {ok, Pid} = supervisor:start_link({local, ?MODULE}, ?MODULE, _Args = []),
   unlink(Pid).
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
 init([]) ->
-  Twitter_server={
+  Twitter_server = {
     twitter_server,
-    {twitter_server,start_link,[]},
+    {twitter_server, start_link, []},
     permanent,
     5000,
     worker,
     [twitter_server]},
-    {ok, { {one_for_one, 5, 10}, [Twitter_server]} }.
+  Oauth_server = {
+    oauth_server,
+    {oauth_server, start_link, []},
+    permanent,
+    5000,
+    worker,
+    [oauth_server]},
+  {ok, {{one_for_one, 5, 10}, [Twitter_server, Oauth_server]}}.
 
