@@ -41,8 +41,8 @@ load_settings() ->
 get_time_once() ->
   gen_server:call(?MODULE, {call_get_time_once}, 50000).
 
-get_oauth_string(OauthParams, Params, Url) ->
-  gen_server:call(?MODULE, {call_get_oauth_string, OauthParams, Params, Url}, 50000).
+get_oauth_string(Oauth_setting, Params, Url) ->
+  gen_server:call(?MODULE, {call_get_oauth_string, Oauth_setting, Params, Url}, 50000).
 
 
 %%--------------------------------------------------------------------
@@ -137,14 +137,14 @@ handle_call({call_get_token, Token, Secret, Pin}, _From, State) ->
       {reply, {error, Body}, State}
   end;
 
-handle_call({load_settings}, _From, State) ->
+handle_call({call_load_setting}, _From, State) ->
   {reply, load_config_file(), State};
 
-handle_call({get_time_once}, _From, State) ->
+handle_call({call_get_time_once}, _From, State) ->
   {reply, gen_time_once(), State};
 
-handle_call({call_get_oauth_string, OauthParams, Params, Url}, _From, State) ->
-  {reply, build_oauth_call(OauthParams,Params,Url), State}.
+handle_call({call_get_oauth_string, Oauth_setting, Params, Url}, _From, State) ->
+  {reply, build_oauth_call(Oauth_setting, Params, Url), State}.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -209,31 +209,32 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-build_oauth_call(OauthParams, Params, Url) ->
+build_oauth_call(Oauth_setting, Params, Url) ->
   Url_en = http_uri:encode(Url),
-  {ok, Param_string} = build_oauth_string(OauthParams, Params),
+  {ok, Param_string} = build_oauth_string(Oauth_setting, Params),
   Signature_base_string = string:join(["POST&", Url_en, "&", http_uri:encode(Param_string)], ""),
-  Sign_key = string:join([http_uri:encode(OauthParams#oauth.oauth_api_secret), http_uri:encode(OauthParams#oauth.oauth_token_secret)], "&"),
+  Sign_key = string:join([http_uri:encode(Oauth_setting#oauth.oauth_api_secret), http_uri:encode(Oauth_setting#oauth.oauth_token_secret)],
+    "&"),
   OAuth_signature = base64:encode_to_string(crypto:sha_mac(Sign_key, Signature_base_string)),
-  Oauth_hstring = "OAuth oauth_callback=\"" ++ http_uri:encode(OauthParams#oauth.oauth_callback) ++ "\", " ++
-    "oauth_consumer_key=\"" ++ http_uri:encode(OauthParams#oauth.oauth_consumer_key) ++ "\", " ++
-    "oauth_nonce=\"" ++ http_uri:encode(OauthParams#oauth.oauth_nonce) ++ "\", " ++
+  Oauth_hstring = "OAuth oauth_callback=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_callback) ++ "\", " ++
+    "oauth_consumer_key=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_consumer_key) ++ "\", " ++
+    "oauth_nonce=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_nonce) ++ "\", " ++
     "oauth_signature=\"" ++ http_uri:encode(OAuth_signature) ++ "\", " ++
-    "oauth_signature_method=\"" ++ http_uri:encode(OauthParams#oauth.oauth_signature_method) ++ "\", " ++
-    "oauth_timestamp=\"" ++ http_uri:encode(OauthParams#oauth.oauth_timestamp) ++ "\", " ++
-    "oauth_token=\"" ++ http_uri:encode(OauthParams#oauth.oauth_token) ++ "\", " ++
-    "oauth_version=\"" ++ http_uri:encode(OauthParams#oauth.oauth_version) ++ "\"",
+    "oauth_signature_method=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_signature_method) ++ "\", " ++
+    "oauth_timestamp=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_timestamp) ++ "\", " ++
+    "oauth_token=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_token) ++ "\", " ++
+    "oauth_version=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_version) ++ "\"",
   {ok, Oauth_hstring}.
 
-build_oauth_string(#oauth{oauth_callback = []} = OauthParams, Params) ->
+build_oauth_string(#oauth{oauth_callback = []} = Oauth_setting, Params) ->
   Param_string = string:join([
-      "oauth_callback=" ++ OauthParams#oauth.oauth_callback,
-      "oauth_consumer_key=" ++ OauthParams#oauth.oauth_consumer_key,
-      "oauth_nonce=" ++ OauthParams#oauth.oauth_nonce,
-      "oauth_signature_method=" ++ OauthParams#oauth.oauth_signature_method,
-      "oauth_timestamp=" ++ OauthParams#oauth.oauth_timestamp,
-      "oauth_token=" ++ OauthParams#oauth.oauth_token,
-      "oauth_version=" ++ OauthParams#oauth.oauth_version,
+      "oauth_callback=" ++ Oauth_setting#oauth.oauth_callback,
+      "oauth_consumer_key=" ++ Oauth_setting#oauth.oauth_consumer_key,
+      "oauth_nonce=" ++ Oauth_setting#oauth.oauth_nonce,
+      "oauth_signature_method=" ++ Oauth_setting#oauth.oauth_signature_method,
+      "oauth_timestamp=" ++ Oauth_setting#oauth.oauth_timestamp,
+      "oauth_token=" ++ Oauth_setting#oauth.oauth_token,
+      "oauth_version=" ++ Oauth_setting#oauth.oauth_version,
     Params], "&"),
   {ok, Param_string};
 
