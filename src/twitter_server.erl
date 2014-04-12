@@ -11,7 +11,9 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, statuses_update/3, subscribe_to_term/1, params_to_string/1]).
+-export([start_link/0, statuses_update/3,
+  subscribe_to_term/1, params_to_string/1,
+  statuses_mentions_timeline/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -33,6 +35,8 @@ subscribe_to_term(Term) ->
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).
 
+statuses_mentions_timeline(Token, Secret) ->
+  gen_server:call(?MODULE, {call_statuses_mentions_timeline, Token, Secret}, 50000).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -108,8 +112,13 @@ handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
     _ ->
       {reply, {error, Body}, State}
 
-  end.
-
+  end;
+handle_call({call_statuses_mentions_timeline}, Token, Secret) ->
+  Url = ?MENTIONS,
+  {ok, Oauth_load} = oauth_server:load_settings(),
+  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
+  Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, [], Url),
 
 %%--------------------------------------------------------------------
 %% @private
