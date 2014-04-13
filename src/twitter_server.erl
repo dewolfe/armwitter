@@ -13,7 +13,7 @@
 %% API
 -export([start_link/0, statuses_update/3,
   subscribe_to_term/1, params_to_string/1,
-  statuses_mentions_timeline/2]).
+  statuses_mentions_timeline/3]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -35,8 +35,8 @@ subscribe_to_term(Term) ->
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).
 
-statuses_mentions_timeline(Token, Secret) ->
-  gen_server:call(?MODULE, {call_statuses_mentions_timeline, Token, Secret}, 50000).
+statuses_mentions_timeline(Params, Token, Secret) ->
+  gen_server:call(?MODULE, {call_statuses_mentions_timeline, Params, Token, Secret}, 50000).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -114,15 +114,14 @@ handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
 
   end;
 handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, State) ->
-  Url = ?MENTIONS,
   Params_string = string:join([params_to_string(P) || P <- Params], "&"),
+  Url = ?MENTIONS,
   {ok, Oauth_load} = oauth_server:load_settings(),
   {ok, TimeStamp, Once} = oauth_server:get_time_once(),
   Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
   {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
-  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
-    {"Content-Type", "text/html; charset=utf-8"}],
-    "application/x-www-form-urlencoded", Params_string},
+  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(get, {Url ++ "?" ++ Params_string, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
+    {"Content-Type", "text/html; charset=utf-8"}]},
     [{autoredirect, false}, {relaxed, true}], []),
   case Code of
     200 ->
@@ -217,7 +216,6 @@ subscription(Term) ->
 receive_chunk(RequestId) ->
   receive
     {http, {RequestId, {error, Reason}}} when (Reason =:= etimedout) orelse (Reason =:= timeout) ->
-      io:format("thiss"),
       {error, timeout};
     {http, {RequestId, {{_, 401, _} = Status, Headers, _}}} ->
       io:format("unauthroized~n"),
@@ -225,7 +223,6 @@ receive_chunk(RequestId) ->
 
 
     {http, {RequestId, Result}} ->
-      io:format("fucking erroer ~p~n", [Result]),
       {error, Result};
 
     {http, {RequestId, stream_start, Headers}} ->
@@ -245,18 +242,16 @@ receive_chunk(RequestId) ->
 
 %% end of streaming data
     {http, {RequestId, stream_end, Headers}} ->
-      io:format("Streaming data end ~p ~n", [Headers]),
       {ok, RequestId};
 
 %% timeout
     _ ->
-      io:format("dont know what the fuck we got"),
       receive_chunk(RequestId)
   end.
 
 params_to_string(Param) ->
   {K, V} = Param,
-  atom_to_list(K) ++ "=" ++ V.
+  atom_to_list(K) ++ "=" ++ http_uri:encode(V).
 
 get_text(Data) ->
   Decoded = mochijson2:decode(Data),

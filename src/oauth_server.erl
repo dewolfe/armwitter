@@ -102,14 +102,11 @@ handle_call({call_request_token, Callback}, _From, State) ->
   {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "application/json"}, {"User-Agent", "Doms123"},
     {"Content-Type", "text/html; charset=utf-8"}], [], []},
     [{autoredirect, false}, {relaxed, true}], []),
-  io:format("Rsponse is ~s~n", [Body]),
-
   case Code of
     200 ->
       Res = string:tokens(Body, "&"),
       Oauth_rtoken = string:substr(lists:nth(1, Res), string:str(lists:nth(1, Res), "=") + 1),
       Oauth_rtoken_secret = string:substr(lists:nth(2, Res), string:str(lists:nth(2, Res), "=") + 1),
-      io:format("oauth_token=~s~n", [Oauth_rtoken]),
       ReturnUrl = "https://api.twitter.com/oauth/authenticate?oauth_token=" ++ Oauth_rtoken,
       {reply, {ok, {ReturnUrl, Oauth_rtoken, Oauth_rtoken_secret}}, State};
     _ ->
@@ -225,6 +222,19 @@ build_oauth_call(Oauth_setting, Params, Url) ->
     "oauth_token=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_token) ++ "\", " ++
     "oauth_version=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_version) ++ "\"",
   {ok, Oauth_hstring}.
+
+build_oauth_string(#oauth{oauth_http_method = "GET"} = Oauth_setting, Params) ->
+  Param_string = string:join([
+    Params,
+      "oauth_callback=" ++ Oauth_setting#oauth.oauth_callback,
+      "oauth_consumer_key=" ++ Oauth_setting#oauth.oauth_consumer_key,
+      "oauth_nonce=" ++ Oauth_setting#oauth.oauth_nonce,
+      "oauth_signature_method=" ++ Oauth_setting#oauth.oauth_signature_method,
+      "oauth_timestamp=" ++ Oauth_setting#oauth.oauth_timestamp,
+      "oauth_token=" ++ Oauth_setting#oauth.oauth_token,
+      "oauth_version=" ++ Oauth_setting#oauth.oauth_version
+  ], "&"),
+  {ok, Param_string};
 
 build_oauth_string(#oauth{oauth_callback = []} = Oauth_setting, Params) ->
   Param_string = string:join([
