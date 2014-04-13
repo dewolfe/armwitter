@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(twitter_server).
 -author("dewolfe").
+-include_lib("eunit/include/eunit.hrl").
 -include("awr.hrl").
 -behaviour(gen_server).
 
@@ -22,6 +23,10 @@
   handle_info/2,
   terminate/2,
   code_change/3]).
+
+-ifdef(TEST).
+-include("../test/twitter_server_test.hrl").
+-endif.
 -define(SERVER, ?MODULE).
 
 -record(state, {}).
@@ -36,6 +41,8 @@ subscribe_to_term(Term) ->
 
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).
+
+-spec statuses_mentions_timeline(Params :: list(), Token :: list(), Secret :: list()) -> {atom(), list()}.
 
 statuses_mentions_timeline(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_mentions_timeline, Params, Token, Secret}, 50000).
@@ -99,7 +106,7 @@ handle_call({call_subscribe_to_term, Term}, _From, State) ->
 
 handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
   Url = ?STATUSUPDATE,
-  Params_string = string:join([params_to_string(P) || P <- Params], "&"),
+  Params_string = params_to_string(Params),
   {ok, Oauth_load} = oauth_server:load_settings(),
   {ok, TimeStamp, Once} = oauth_server:get_time_once(),
   Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
@@ -117,7 +124,7 @@ handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
   end;
 handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, State) ->
   Url = ?MENTIONS,
-  Params_string = string:join([params_to_string(P) || P <- Params], "&"),
+  Params_string = params_to_string(Params),
   {ok, Oauth_load} = oauth_server:load_settings(),
   {ok, TimeStamp, Once} = oauth_server:get_time_once(),
   Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
@@ -252,8 +259,9 @@ receive_chunk(RequestId) ->
   end.
 
 params_to_string(Param) ->
-  {K, V} = Param,
-  atom_to_list(K) ++ "=" ++ http_uri:encode(V).
+  Params_list=[atom_to_list(K) ++ "=" ++ http_uri:encode(V) || {K,V} <- Param],
+
+  string:join(Params_list,"&").
 
 get_text(Data) ->
   Decoded = mochijson2:decode(Data),
