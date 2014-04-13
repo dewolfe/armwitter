@@ -114,8 +114,8 @@ handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
 
   end;
 handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, State) ->
-  Params_string = string:join([params_to_string(P) || P <- Params], "&"),
   Url = ?MENTIONS,
+  Params_string = string:join([params_to_string(P) || P <- Params], "&"),
   {ok, Oauth_load} = oauth_server:load_settings(),
   {ok, TimeStamp, Once} = oauth_server:get_time_once(),
   Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
