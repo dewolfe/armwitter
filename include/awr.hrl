@@ -21,7 +21,8 @@
   oauth_token = [],
   oauth_version = "1.0",
   oauth_api_secret = [],
-  oauth_token_secret = []
+  oauth_token_secret = [],
+  oauth_http_method = "POST"
 }
 ).
 

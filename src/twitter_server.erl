@@ -113,13 +113,24 @@ handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
       {reply, {error, Body}, State}
 
   end;
-handle_call({call_statuses_mentions_timeline}, Token, Secret) ->
+handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, State) ->
   Url = ?MENTIONS,
+  Params_string = string:join([params_to_string(P) || P <- Params], "&"),
   {ok, Oauth_load} = oauth_server:load_settings(),
   {ok, TimeStamp, Once} = oauth_server:get_time_once(),
-  Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
-  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, [], Url),
+  Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
+  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
+    {"Content-Type", "text/html; charset=utf-8"}],
+    "application/x-www-form-urlencoded", Params_string},
+    [{autoredirect, false}, {relaxed, true}], []),
+  case Code of
+    200 ->
+      {reply, {ok, Body}, State};
+    _ ->
+      {reply, {error, Body}, State}
 
+  end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
