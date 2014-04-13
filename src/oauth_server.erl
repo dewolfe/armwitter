@@ -212,7 +212,7 @@ build_oauth_call(Oauth_setting, Params, Url) ->
   Signature_base_string = string:join([Oauth_setting#oauth.oauth_http_method, Url_en, http_uri:encode(Param_string)], "&"),
   Sign_key = string:join([http_uri:encode(Oauth_setting#oauth.oauth_api_secret), http_uri:encode(Oauth_setting#oauth.oauth_token_secret)],
     "&"),
-  OAuth_signature = base64:encode_to_string(crypto:sha_mac(Sign_key, Signature_base_string)),
+  OAuth_signature = base64:encode_to_string(crypto:hmac(sha, Sign_key, Signature_base_string)),
   Oauth_hstring = "OAuth oauth_callback=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_callback) ++ "\", " ++
     "oauth_consumer_key=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_consumer_key) ++ "\", " ++
     "oauth_nonce=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_nonce) ++ "\", " ++
