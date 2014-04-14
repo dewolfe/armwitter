@@ -1,9 +1,29 @@
 %%%-------------------------------------------------------------------
 %%% @author Dominic DeWolfe
 %%% @doc
-%%%
 %%% @end
 %%% Created : 10. Apr 2014 12:42 PM
+%% The MIT License
+
+%% Copyright (c) 2013-2014 Dominic DeWolfe <d_dewolfe@yahoo.com>
+
+%% Permission is hereby granted, free of charge, to any person obtaining a copy
+%% of this software and associated documentation files (the "Software"), to deal
+%% in the Software without restriction, including without limitation the rights
+%% to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+%% copies of the Software, and to permit persons to whom the Software is
+%% furnished to do so, subject to the following conditions:
+
+%% The above copyright notice and this permission notice shall be included in
+%% all copies or substantial portions of the Software.
+
+%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+%% IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+%% FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+%% AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+%% LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+%% OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+%% THE SOFTWARE.
 %%%-------------------------------------------------------------------
 -module(twitter_server).
 -author("dewolfe").
@@ -37,13 +57,13 @@
 subscribe_to_term(Term) ->
   gen_server:call(?MODULE, {call_subscribe_to_term, Term}, 50000).
 
-
-
 -spec statuses_update(Params :: list(), Token :: list(), Secret :: list()) -> {ok, <<>>}.
+
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).
 
 -spec user_timeline(Parmas :: list(), Token :: list(), Secret :: list()) -> {ok, <<>>}.
+
 user_timeline(Parmas, Token, Secret) ->
   gen_server:call(?MODULE, {call_user_timeline, Parmas, Token, Secret}, 50000).
 
@@ -51,6 +71,7 @@ statuses_mentions_timeline(Token, Secret) ->
   statuses_mentions_timeline([], Token, Secret).
 
 -spec statuses_mentions_timeline(Params :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
+
 statuses_mentions_timeline(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_mentions_timeline, Params, Token, Secret}, 50000).
 
@@ -103,10 +124,6 @@ init([]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-
-
-
-
 handle_call({call_subscribe_to_term, Term}, _From, State) ->
   spawn(fun() -> subscription(Term) end),
   {reply, ok, State};
@@ -134,6 +151,7 @@ handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, Sta
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
 handle_cast(_Request, State) ->
   {noreply, State}.
 
@@ -151,6 +169,7 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
 handle_info(_Info, State) ->
   {noreply, State}.
 
@@ -167,6 +186,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
+
 terminate(_Reason, _State) ->
   ok.
 
@@ -203,9 +223,6 @@ subscription(Term) ->
 %%   end.
   {ok}.
 
-
-
-
 receive_chunk(RequestId) ->
   receive
     {http, {RequestId, {error, Reason}}} when (Reason =:= etimedout) orelse (Reason =:= timeout) ->
@@ -213,21 +230,15 @@ receive_chunk(RequestId) ->
     {http, {RequestId, {{_, 401, _} = Status, Headers, _}}} ->
       io:format("unauthroized~n"),
       timer:sleep(8000);
-
-
     {http, {RequestId, Result}} ->
       {error, Result};
-
     {http, {RequestId, stream_start, Headers}} ->
       io:format("Streaming data start ~p ~n", [Headers]),
       receive_chunk(RequestId);
-
     {http, {RequestId, stream, Data}} ->
       if
         Data /= <<"\r\n">> ->
           get_text(Data);
-
-
         true ->
           receive_chunk(RequestId)
       end,
@@ -253,9 +264,9 @@ get_text(Data) ->
   Text = proplists:get_value(<<"text">>, Jdata, <<"Nada~n">>),
   file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
 
--spec twitter_put_request(Url :: list(), Parmas :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
-twitter_put_request(Url, Params, Token, Secret) ->
+-spec twitter_post_request(Url :: list(), Parmas :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
 
+twitter_post_request(Url, Params, Token, Secret) ->
   Params_string = params_to_string(Params),
   {ok, Oauth_load} = oauth_server:load_settings(),
   {ok, TimeStamp, Once} = oauth_server:get_time_once(),
@@ -274,6 +285,7 @@ twitter_put_request(Url, Params, Token, Secret) ->
   end.
 
 -spec twitter_get_request(Url :: list(), Parmas :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
+
 twitter_get_request(Url, Params, Token, Secret) ->
   Params_string = params_to_string(Params),
   {ok, Oauth_load} = oauth_server:load_settings(),
