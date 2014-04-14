@@ -117,22 +117,8 @@ handle_call({call_user_timeline, Params, Token, Secret}, _From, State) ->
 
 handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
   Url = ?STATUSUPDATE,
-  Params_string = params_to_string(Params),
-  {ok, Oauth_load} = oauth_server:load_settings(),
-  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
-  Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
-  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
-  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
-    {"Content-Type", "text/html; charset=utf-8"}],
-    "application/x-www-form-urlencoded", Params_string},
-    [{autoredirect, false}, {relaxed, true}], [{body_format, binary}]),
-  case Code of
-    200 ->
-      {reply, {ok, jsx:decode(Body)}, State};
-    _ ->
-      {reply, {error, Body}, State}
+  {reply, twitter_post_request(Url, Params, Token, Secret), State};
 
-  end;
 handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, State) ->
   Url = ?MENTIONS,
   {reply, twitter_get_request(Url, Params, Token, Secret), State}.
@@ -267,6 +253,27 @@ get_text(Data) ->
   Text = proplists:get_value(<<"text">>, Jdata, <<"Nada~n">>),
   file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
 
+-spec twitter_put_request(Url :: list(), Parmas :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
+twitter_put_request(Url, Params, Token, Secret) ->
+
+  Params_string = params_to_string(Params),
+  {ok, Oauth_load} = oauth_server:load_settings(),
+  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
+  Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
+  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
+    {"Content-Type", "text/html; charset=utf-8"}],
+    "application/x-www-form-urlencoded", Params_string},
+    [{autoredirect, false}, {relaxed, true}], [{body_format, binary}]),
+  case Code of
+    200 ->
+      {ok, jsx:decode(Body)};
+    _ ->
+      {error, Body}
+
+  end.
+
+-spec twitter_get_request(Url :: list(), Parmas :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
 twitter_get_request(Url, Params, Token, Secret) ->
   Params_string = params_to_string(Params),
   {ok, Oauth_load} = oauth_server:load_settings(),
