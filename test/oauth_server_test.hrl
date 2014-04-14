@@ -10,9 +10,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-params_to_string_test() ->
-  A=[{key1,"value1"},{key2,"value2"}],
-  ?assert(twitter_server:params_to_string(A) =:=  "key1=value1&key2=value2").
+request_token_test() ->
 
-
-length_test() -> ?assert(length([1,2,3]) =:= 3).
+  ?assert(twitter_server:request_token("oob") =:= {ok, {_, _, _}}).
