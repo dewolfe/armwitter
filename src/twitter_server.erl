@@ -12,7 +12,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, statuses_update/3,
+-export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
   subscribe_to_term/1, params_to_string/1,
   statuses_mentions_timeline/3]).
 
@@ -37,13 +37,20 @@
 subscribe_to_term(Term) ->
   gen_server:call(?MODULE, {call_subscribe_to_term, Term}, 50000).
 
--spec statuses_update(Params :: list(), Token :: list(), Secret :: list()) -> {ok, Body :: list()}.
 
+
+-spec statuses_update(Params :: list(), Token :: list(), Secret :: list()) -> {ok, <<>>}.
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).
 
--spec statuses_mentions_timeline(Params :: list(), Token :: list(), Secret :: list()) -> {atom(), list()}.
+-spec user_timeline(Parmas :: list(), Token :: list(), Secret :: list()) -> {ok, <<>>}.
+user_timeline(Parmas, Token, Secret) ->
+  gen_server:call(?MODULE, {call_user_timeline, Parmas, Token, Secret}, 50000).
 
+statuses_mentions_timeline(Token, Secret) ->
+  statuses_mentions_timeline([], Token, Secret).
+
+-spec statuses_mentions_timeline(Params :: list(), Token :: list(), Secret :: list()) -> {atom(), <<>>}.
 statuses_mentions_timeline(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_mentions_timeline, Params, Token, Secret}, 50000).
 
@@ -104,6 +111,10 @@ handle_call({call_subscribe_to_term, Term}, _From, State) ->
   spawn(fun() -> subscription(Term) end),
   {reply, ok, State};
 
+handle_call({call_user_timeline, Params, Token, Secret}, _From, State) ->
+  Url = ?USERTIMELINE,
+  {reply, twitter_get_request(Url, Params, Token, Secret), State};
+
 handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
   Url = ?STATUSUPDATE,
   Params_string = params_to_string(Params),
@@ -114,31 +125,18 @@ handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
   {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
     {"Content-Type", "text/html; charset=utf-8"}],
     "application/x-www-form-urlencoded", Params_string},
-    [{autoredirect, false}, {relaxed, true}], []),
+    [{autoredirect, false}, {relaxed, true}], [{body_format, binary}]),
   case Code of
     200 ->
-      {reply, {ok, Body}, State};
+      {reply, {ok, jsx:decode(Body)}, State};
     _ ->
       {reply, {error, Body}, State}
 
   end;
 handle_call({call_statuses_mentions_timeline, Params, Token, Secret}, _Form, State) ->
   Url = ?MENTIONS,
-  Params_string = params_to_string(Params),
-  {ok, Oauth_load} = oauth_server:load_settings(),
-  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
-  Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
-  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
-  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(get, {Url ++ "?" ++ Params_string, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "inets"},
-    {"Content-Type", "text/html; charset=utf-8"}]},
-    [{autoredirect, false}, {relaxed, true}], []),
-  case Code of
-    200 ->
-      {reply, {ok, Body}, State};
-    _ ->
-      {reply, {error, Body}, State}
+  {reply, twitter_get_request(Url, Params, Token, Secret), State}.
 
-  end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -259,9 +257,9 @@ receive_chunk(RequestId) ->
   end.
 
 params_to_string(Param) ->
-  Params_list=[atom_to_list(K) ++ "=" ++ http_uri:encode(V) || {K,V} <- Param],
+  Params_list = [atom_to_list(K) ++ "=" ++ http_uri:encode(V) || {K, V} <- Param],
 
-  string:join(Params_list,"&").
+  string:join(Params_list, "&").
 
 get_text(Data) ->
   Decoded = mochijson2:decode(Data),
@@ -269,3 +267,21 @@ get_text(Data) ->
   Text = proplists:get_value(<<"text">>, Jdata, <<"Nada~n">>),
   file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
 
+twitter_get_request(Url, Params, Token, Secret) ->
+  Params_string = params_to_string(Params),
+  {ok, Oauth_load} = oauth_server:load_settings(),
+  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
+  Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret,
+    oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
+  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, Body}} = httpc:request(get, {Url ++ "?" ++ Params_string,
+    [{"Authorization", Oauth_hstring}, {"Accept", "*/*"},
+      {"User-Agent", "inets"}, {"Content-Type", "text/html; charset=utf-8"}]},
+    [{autoredirect, false}, {relaxed, true}], [{body_format, binary}]),
+  case Code of
+    200 ->
+      {ok, jsx:decode(Body)};
+    _ ->
+      {error, jsx:decode(Body)}
+
+  end.
