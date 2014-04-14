@@ -33,7 +33,7 @@
 
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
-  subscribe_to_term/1, params_to_string/1,
+  subscribe_to_term/1, params_to_string/1,home_timeline/3,
   statuses_mentions_timeline/3]).
 
 %% gen_server callbacks
@@ -57,7 +57,7 @@
 subscribe_to_term(Term) ->
   gen_server:call(?MODULE, {call_subscribe_to_term, Term}, 50000).
 
--spec statuses_update(Params :: list(), Token :: list(), Secret :: list()) -> {ok, <<>>}.
+-spec statuses_update(Params :: {atom(),list()}, Token :: list(), Secret :: list()) -> {ok, <<>>}.
 
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).
@@ -74,6 +74,11 @@ statuses_mentions_timeline(Token, Secret) ->
 
 statuses_mentions_timeline(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_mentions_timeline, Params, Token, Secret}, 50000).
+
+-spec home_timeline(Params :: {atom(),list()}, Token :: list(), Secret :: list()) -> {ok, <<>>}.
+
+home_timeline(Parmas,Token,Secret) ->
+   gen_server:call(?MODULE,{call_home_timeline,Parmas,Token,Secret},50000).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -131,6 +136,10 @@ handle_call({call_subscribe_to_term, Term}, _From, State) ->
 handle_call({call_user_timeline, Params, Token, Secret}, _From, State) ->
   Url = ?USERTIMELINE,
   {reply, twitter_get_request(Url, Params, Token, Secret), State};
+
+handle_call({call_home_timeline,Params,Token,Secret},_From,State) ->
+  Url=?HOMETIMELINE,
+  {reply,twitter_get_request(Url,Params,Token,Secret),State};
 
 handle_call({call_statuses_update, Params, Token, Secret}, _From, State) ->
   Url = ?STATUSUPDATE,
