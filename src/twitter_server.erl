@@ -37,7 +37,7 @@
 subscribe_to_term(Term) ->
   gen_server:call(?MODULE, {call_subscribe_to_term, Term}, 50000).
 
--spec statuses_update(Params :: list(), Token :: list(), Secret :: list()) -> {atom(), list()}.
+-spec statuses_update(Params :: list(), Token :: list(), Secret :: list()) -> {ok, Body :: list()}.
 
 statuses_update(Params, Token, Secret) ->
   gen_server:call(?MODULE, {call_statuses_update, Params, Token, Secret}, 50000).

@@ -31,9 +31,12 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec request_token(CallBack :: list()) -> {ok, {Url :: list(), Oauth_token :: list(), Oauth_secret :: list()}}.
 request_token(Callback) ->
   gen_server:call(?MODULE, {call_request_token, Callback}, 50000).
 
+-spec get_token(Token :: list, Secret :: list, Pin :: list) -> {ok, {Oauth_token :: list(), Oauth_secret :: list()}}.
 get_token(Token, Secret, Pin) ->
   gen_server:call(?MODULE, {call_get_token, Token, Secret, Pin}, 50000).
 

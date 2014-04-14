@@ -10,6 +10,3 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-request_token_test() ->
-
-  ?assert(twitter_server:request_token("oob") =:= {ok, {_, _, _}}).
