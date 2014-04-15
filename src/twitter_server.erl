@@ -33,7 +33,7 @@
 
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
-  subscribe_to_term/1, params_to_string/1,home_timeline/3,
+  subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3,
   statuses_mentions_timeline/3]).
 
 %% gen_server callbacks
@@ -52,7 +52,7 @@
 -record(state, {}).
 
 %%%===================================================================
-%%% API
+%%% Timelines
 %%%===================================================================
 subscribe_to_term(Term) ->
   gen_server:call(?MODULE, {call_subscribe_to_term, Term}, 50000).
@@ -79,6 +79,15 @@ statuses_mentions_timeline(Params, Token, Secret) ->
 
 home_timeline(Parmas,Token,Secret) ->
    gen_server:call(?MODULE,{call_home_timeline,Parmas,Token,Secret},50000).
+
+-spec retweets_of_me(Params :: {atom(), list()}, Token :: list(), Secret :: list()) -> {ok, <<>>}.
+
+retweets_of_me(Parmas, Token, Secret) ->
+  gen_server:call({call_retweets_of_me, Parmas, Token, Secret}, 50000).
+
+%%%===================================================================
+%%% Tweets
+%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -136,6 +145,10 @@ handle_call({call_subscribe_to_term, Term}, _From, State) ->
 handle_call({call_user_timeline, Params, Token, Secret}, _From, State) ->
   Url = ?USERTIMELINE,
   {reply, twitter_get_request(Url, Params, Token, Secret), State};
+
+handle_call({retweets_of_me, Parmas, Token, Secret}, _From, State) ->
+  Url = ?RETWEETSOFME,
+  {reply, twitter_get_request(Url, Parmas, Token, Secret), _From, State};
 
 handle_call({call_home_timeline,Params,Token,Secret},_From,State) ->
   Url=?HOMETIMELINE,
