@@ -34,7 +34,7 @@
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
   subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
-  statuses_mentions_timeline/3]).
+  statuses_mentions_timeline/3, statuses_show/3]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -100,6 +100,11 @@ statuses_retweets(Id, Params, Token, Secret) ->
 statuses_update(Params, Token, Secret) ->
   Url = ?STATUSUPDATE,
   gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret}, 50000).
+
+statuses_show(Parmas, Token, Secret) ->
+  Url = ?STATUSESSHOW,
+  gen_server:call(?MODULE, {call_twitter_get_request, Url, Parmas, Token, Secret}, 50000).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the server
