@@ -33,7 +33,7 @@
 
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
-  subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3,
+  subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
   statuses_mentions_timeline/3]).
 
 %% gen_server callbacks
@@ -84,9 +84,17 @@ retweets_of_me(Parmas, Token, Secret) ->
   Url = ?RETWEETSOFME,
   gen_server:call({call_twitter_get_request, Url, Parmas, Token, Secret}, 50000).
 
+
 %%%===================================================================
 %%% Tweets
 %%%===================================================================
+-spec statuses_retweets(Id :: string(), Params :: {atom(), list()}, Token :: list(), Secret :: list()) -> {ok, <<>>}.
+
+statuses_retweets(Id, Params, Token, Secret) ->
+  Url = ?STATUSRETWEETS ++ Id ++ ".json",
+  gen_server:call(?MODULE, {call_twitter_get_request, Url, Params, Token, Secret}).
+
+
 -spec statuses_update(Params :: {atom(), list()}, Token :: list(), Secret :: list()) -> {ok, <<>>}.
 
 statuses_update(Params, Token, Secret) ->
@@ -298,6 +306,9 @@ receive_chunk(RequestId) ->
       receive_chunk(RequestId)
   end.
 
+params_to_string([]) ->
+  io:format("params to string workd ~n"),
+  [];
 params_to_string(Param) ->
   Params_list = [atom_to_list(K) ++ "=" ++ http_uri:encode(V) || {K, V} <- Param],
 

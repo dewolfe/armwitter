@@ -234,7 +234,10 @@ code_change(_OldVsn, State, _Extra) ->
 build_oauth_call(Oauth_setting, Params, Url) ->
   Url_en = http_uri:encode(Url),
   {ok, Param_string} = build_oauth_string(Oauth_setting, Params),
+  io:format("Param String is ~s~n", [Param_string]),
   Signature_base_string = string:join([Oauth_setting#oauth.oauth_http_method, Url_en, http_uri:encode(Param_string)], "&"),
+  io:format("Signature_base_string is ~s~n", [Signature_base_string]),
+
   Sign_key = string:join([http_uri:encode(Oauth_setting#oauth.oauth_api_secret), http_uri:encode(Oauth_setting#oauth.oauth_token_secret)],
     "&"),
   OAuth_signature = base64:encode_to_string(crypto:hmac(sha, Sign_key, Signature_base_string)),
@@ -248,6 +251,19 @@ build_oauth_call(Oauth_setting, Params, Url) ->
     "oauth_version=\"" ++ http_uri:encode(Oauth_setting#oauth.oauth_version) ++ "\"",
   {ok, Oauth_hstring}.
 
+
+build_oauth_string(#oauth{oauth_http_method = "GET"} = Oauth_setting, []) ->
+  io:format("build oauth workd ~n"),
+  Param_string = string:join([
+      "oauth_callback=" ++ Oauth_setting#oauth.oauth_callback,
+      "oauth_consumer_key=" ++ Oauth_setting#oauth.oauth_consumer_key,
+      "oauth_nonce=" ++ Oauth_setting#oauth.oauth_nonce,
+      "oauth_signature_method=" ++ Oauth_setting#oauth.oauth_signature_method,
+      "oauth_timestamp=" ++ Oauth_setting#oauth.oauth_timestamp,
+      "oauth_token=" ++ Oauth_setting#oauth.oauth_token,
+      "oauth_version=" ++ Oauth_setting#oauth.oauth_version
+  ], "&"),
+  {ok, Param_string};
 build_oauth_string(#oauth{oauth_http_method = "GET"} = Oauth_setting, Params) ->
   Param_string = string:join([
     Params,
