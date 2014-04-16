@@ -17,7 +17,7 @@
 -define(USERTIMELINE, "https://api.twitter.com/1.1/statuses/user_timeline.json").
 -define(HOMETIMELINE, "https://api.twitter.com/1.1/statuses/home_timeline.json").
 -define(RETWEETSOFME, "https://api.twitter.com/1.1/statuses/retweets_of_me.json").
-
+-define(STATUSESRETWEET, "https://api.twitter.com/1.1/statuses/retweet/").
 -record(oauth, {
   oauth_callback = [],
   oauth_consumer_key = [],

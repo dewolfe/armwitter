@@ -34,7 +34,7 @@
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
   subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
-  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4]).
+  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4, statuses_retweet/4]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -107,6 +107,10 @@ statuses_show(Parmas, Token, Secret) ->
 
 statuses_destroy(Id, Params, Token, Secret) ->
   Url = ?STATUSESDESTROY ++ Id ++ ".json",
+  gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret}, 50000).
+
+statuses_retweet(Id, Params, Token, Secret) ->
+  Url = ?STATUSESRETWEET ++ Id ++ ".json",
   gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret}).
 
 
