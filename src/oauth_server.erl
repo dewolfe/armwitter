@@ -234,9 +234,9 @@ code_change(_OldVsn, State, _Extra) ->
 build_oauth_call(Oauth_setting, Params, Url) ->
   Url_en = http_uri:encode(Url),
   {ok, Param_string} = build_oauth_string(Oauth_setting, Params),
-  io:format("Param String is ~s~n", [Param_string]),
+  io:format("DeBug:Param String is ~s~n", [Param_string]),
   Signature_base_string = string:join([Oauth_setting#oauth.oauth_http_method, Url_en, http_uri:encode(Param_string)], "&"),
-  io:format("Signature_base_string is ~s~n", [Signature_base_string]),
+  io:format("DeBug:Signature_base_string is ~s~n", [Signature_base_string]),
 
   Sign_key = string:join([http_uri:encode(Oauth_setting#oauth.oauth_api_secret), http_uri:encode(Oauth_setting#oauth.oauth_token_secret)],
     "&"),
@@ -277,6 +277,17 @@ build_oauth_string(#oauth{oauth_http_method = "GET"} = Oauth_setting, Params) ->
   ], "&"),
   {ok, Param_string};
 
+build_oauth_string(#oauth{} = OauthParams, []) ->
+  Param_string = string:join([
+      "oauth_callback=" ++ OauthParams#oauth.oauth_callback,
+      "oauth_consumer_key=" ++ OauthParams#oauth.oauth_consumer_key,
+      "oauth_nonce=" ++ OauthParams#oauth.oauth_nonce,
+      "oauth_signature_method=" ++ OauthParams#oauth.oauth_signature_method,
+      "oauth_timestamp=" ++ OauthParams#oauth.oauth_timestamp,
+      "oauth_token=" ++ OauthParams#oauth.oauth_token,
+      "oauth_version=" ++ OauthParams#oauth.oauth_version], "&"),
+  {ok, Param_string};
+
 build_oauth_string(#oauth{oauth_callback = []} = Oauth_setting, Params) ->
   Param_string = string:join([
       "oauth_callback=" ++ Oauth_setting#oauth.oauth_callback,
@@ -287,17 +298,6 @@ build_oauth_string(#oauth{oauth_callback = []} = Oauth_setting, Params) ->
       "oauth_token=" ++ Oauth_setting#oauth.oauth_token,
       "oauth_version=" ++ Oauth_setting#oauth.oauth_version,
     Params], "&"),
-  {ok, Param_string};
-
-build_oauth_string(#oauth{} = OauthParams, []) ->
-  Param_string = string:join([
-      "oauth_callback=" ++ OauthParams#oauth.oauth_callback,
-      "oauth_consumer_key=" ++ OauthParams#oauth.oauth_consumer_key,
-      "oauth_nonce=" ++ OauthParams#oauth.oauth_nonce,
-      "oauth_signature_method=" ++ OauthParams#oauth.oauth_signature_method,
-      "oauth_timestamp=" ++ OauthParams#oauth.oauth_timestamp,
-      "oauth_token=" ++ OauthParams#oauth.oauth_token,
-      "oauth_version=" ++ OauthParams#oauth.oauth_version], "&"),
   {ok, Param_string}.
 
 load_config_file() ->

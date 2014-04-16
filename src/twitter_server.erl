@@ -34,7 +34,7 @@
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
   subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
-  statuses_mentions_timeline/3, statuses_show/3]).
+  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -105,6 +105,9 @@ statuses_show(Parmas, Token, Secret) ->
   Url = ?STATUSESSHOW,
   gen_server:call(?MODULE, {call_twitter_get_request, Url, Parmas, Token, Secret}, 50000).
 
+statuses_destroy(Id, Params, Token, Secret) ->
+  Url = ?STATUSESDESTROY ++ Id ++ ".json",
+  gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret}).
 
 
 %%--------------------------------------------------------------------
@@ -159,8 +162,6 @@ init([]) ->
 handle_call({call_subscribe_to_term, Term}, _From, State) ->
   spawn(fun() -> subscription(Term) end),
   {reply, ok, State};
-
-
 
 handle_call({call_twitter_get_request, Url, Params, Token, Secret}, _From, State) ->
   Params_string = params_to_string(Params),
@@ -314,7 +315,6 @@ receive_chunk(RequestId) ->
   end.
 
 params_to_string([]) ->
-  io:format("params to string workd ~n"),
   [];
 params_to_string(Param) ->
   Params_list = [atom_to_list(K) ++ "=" ++ http_uri:encode(V) || {K, V} <- Param],

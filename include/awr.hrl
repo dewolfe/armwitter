@@ -11,6 +11,7 @@
 -define(ACCESSTOKEN, "https://api.twitter.com/oauth/access_token").
 -define(STATUSUPDATE,"https://api.twitter.com/1.1/statuses/update.json" ).
 -define(STATUSRETWEETS, "https://api.twitter.com/1.1/statuses/retweets/").
+-define(STATUSESDESTROY, "https://api.twitter.com/1.1/statuses/destroy/").
 -define(STATUSESSHOW, "https://api.twitter.com/1.1/statuses/show.json").
 -define(MENTIONS, "https://api.twitter.com/1.1/statuses/mentions_timeline.json").
 -define(USERTIMELINE, "https://api.twitter.com/1.1/statuses/user_timeline.json").
