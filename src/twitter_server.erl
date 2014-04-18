@@ -34,7 +34,7 @@
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
   subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
-  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4, statuses_retweet/4, format_multipart_formdata/3,
+  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4, statuses_retweet/4,
   statuses_update_with_media/5]).
 
 %% gen_server callbacks
@@ -357,23 +357,5 @@ get_text(Data) ->
   Text = proplists:get_value(<<"text">>, Jdata, <<"Nada~n">>),
   file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
 
-format_multipart_formdata(Boundary, Fields, Files) ->
-  FieldParts = lists:map(fun({FieldName, FieldContent}) ->
-    [lists:concat(["--", Boundary]),
-      lists:concat(["Content-Disposition: form-data; name=\"", atom_to_list(FieldName), "\""]),
-      "",
-      FieldContent]
-  end, Fields),
-  FieldParts2 = lists:append(FieldParts),
-  FileParts = lists:map(fun({FieldName, FileName, FileContent}) ->
-    [lists:concat(["--", Boundary]),
-      lists:concat(["Content-Disposition: format-data; name=\"", atom_to_list(FieldName), "\"; filename=\"", FileName, "\""]),
-      lists:concat(["Content-Type: ", "application/octet-stream"]),
-      "",
-      FileContent]
-  end, Files),
-  FileParts2 = lists:append(FileParts),
-  EndingParts = [lists:concat(["--", Boundary, "--"]), ""],
-  Parts = lists:append([FieldParts2, FileParts2, EndingParts]),
-  string:join(Parts, "\r\n").
+
 
