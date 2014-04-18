@@ -34,7 +34,8 @@
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
   subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
-  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4, statuses_retweet/4]).
+  statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4, statuses_retweet/4, format_multipart_formdata/3,
+  statuses_update_with_media/5]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -111,8 +112,11 @@ statuses_destroy(Id, Params, Token, Secret) ->
 
 statuses_retweet(Id, Params, Token, Secret) ->
   Url = ?STATUSESRETWEET ++ Id ++ ".json",
-  gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret}).
+  gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret}, 50000).
 
+statuses_update_with_media(Params, Token, Secret, Status, Media) ->
+  Url = ?STATUSESUPDATEWITHMEDIA,
+  gen_server:call(?MODULE, {call_twitter_post_request, Url, Params, Token, Secret, Status, Media}, 50000).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -201,6 +205,28 @@ handle_call({call_twitter_post_request, Url, Params, Token, Secret}, _From, Stat
       {reply, {ok, jsx:decode(Body)}, State};
     _ ->
       {reply, {error, jsx:decode(Body)}, State}
+
+  end;
+
+handle_call({call_twitter_post_request, Url, Params, Token, Secret, Status, Media}, _From, State) ->
+  {ok, Oauth_load} = oauth_server:load_settings(),
+  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
+  Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  Boundary = cow_multipart:boundary(),
+  Part_header1 = [{<<"Content-Disposition">>, <<"form-data; name=\"status\"">>}],
+  Part_header = [{<<"Content-Type">>, <<"application/octet-stream">>}, {<<"Content-Disposition">>, <<"form-data; name=\"media[]\"; filename=\"media.png\"">>}],
+  Body = iolist_to_binary([cow_multipart:part(Boundary, Part_header1), list_to_binary(Status), cow_multipart:part(Boundary, Part_header), Media, cow_multipart:close(Boundary)]),
+  Size = bit_size(iolist_to_binary(Body)),
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, [], Url),
+  Header = [{"User-Agent", "inets"}, {"Authorization", Oauth_hstring}, {"Content-Length", Size}],
+  {ok, {{_Version, Code, _ReasonPhrase}, _Headers, RBody}} = httpc:request(post, {Url, Header,
+      "multipart/form-data;boundary=" ++ binary_to_list(Boundary), Body},
+    [{autoredirect, false}, {relaxed, true}], [{body_format, binary}]),
+  case Code of
+    200 ->
+      {reply, {ok, jsx:decode(RBody)}, State};
+    _ ->
+      {reply, {error, jsx:decode(RBody)}, State}
 
   end.
 
@@ -330,4 +356,24 @@ get_text(Data) ->
   {struct, Jdata} = Decoded,
   Text = proplists:get_value(<<"text">>, Jdata, <<"Nada~n">>),
   file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
+
+format_multipart_formdata(Boundary, Fields, Files) ->
+  FieldParts = lists:map(fun({FieldName, FieldContent}) ->
+    [lists:concat(["--", Boundary]),
+      lists:concat(["Content-Disposition: form-data; name=\"", atom_to_list(FieldName), "\""]),
+      "",
+      FieldContent]
+  end, Fields),
+  FieldParts2 = lists:append(FieldParts),
+  FileParts = lists:map(fun({FieldName, FileName, FileContent}) ->
+    [lists:concat(["--", Boundary]),
+      lists:concat(["Content-Disposition: format-data; name=\"", atom_to_list(FieldName), "\"; filename=\"", FileName, "\""]),
+      lists:concat(["Content-Type: ", "application/octet-stream"]),
+      "",
+      FileContent]
+  end, Files),
+  FileParts2 = lists:append(FileParts),
+  EndingParts = [lists:concat(["--", Boundary, "--"]), ""],
+  Parts = lists:append([FieldParts2, FileParts2, EndingParts]),
+  string:join(Parts, "\r\n").
 
