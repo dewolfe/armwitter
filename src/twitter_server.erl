@@ -27,15 +27,14 @@
 %%%-------------------------------------------------------------------
 -module(twitter_server).
 -author("dewolfe").
--include_lib("eunit/include/eunit.hrl").
 -include("awr.hrl").
 -behaviour(gen_server).
 
 %% API
 -export([start_link/0, statuses_update/3, statuses_mentions_timeline/2, user_timeline/3,
-  subscribe_to_term/1, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
+  subscribe_to_term/3, params_to_string/1, home_timeline/3, retweets_of_me/3, statuses_retweets/4,
   statuses_mentions_timeline/3, statuses_show/3, statuses_destroy/4, statuses_retweet/4,
-  statuses_update_with_media/5]).
+  statuses_update_with_media/5, subscribe_to_user/3]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -46,6 +45,7 @@
   code_change/3]).
 
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 -include("../test/twitter_server_test.hrl").
 -endif.
 -define(SERVER, ?MODULE).
@@ -55,8 +55,12 @@
 %%%===================================================================
 %%% Timelines
 %%%===================================================================
-subscribe_to_term(Term) ->
-  gen_server:call(?MODULE, {call_subscribe_to_term, Term}, 50000).
+subscribe_to_term(Term, Token, Secret) ->
+  gen_server:call(?MODULE, {call_subscribe_to_term, Term, Token, Secret}, 50000).
+
+subscribe_to_user(Params, Token, Secret) ->
+  Url = ?STREAMUSER,
+  gen_server:call(?MODULE, {call_subscribe_user, Url, Params, Token, Secret}, 50000).
 
 -spec user_timeline(Parmas :: list(), Token :: list(), Secret :: list()) -> {ok, <<>>}.
 
@@ -167,8 +171,12 @@ init([]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_call({call_subscribe_to_term, Term}, _From, State) ->
-  spawn(fun() -> subscription(Term) end),
+handle_call({call_subscribe_to_term, Term, Token, Secret}, _From, State) ->
+  spawn(fun() -> subscription(Term, Token, Secret) end),
+  {reply, ok, State};
+
+handle_call({call_subscribe_user, Url, Parms, Token, Secret}, _From, State) ->
+  spawn(fun() -> get_subscription(Url, Parms, Token, Secret) end),
   {reply, ok, State};
 
 handle_call({call_twitter_get_request, Url, Params, Token, Secret}, _From, State) ->
@@ -300,21 +308,42 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 
-subscription(Term) ->
-%%   Url = "https://stream.twitter.com/1.1/statuses/filter.json",
-%%   Params = "track=" ++ Term,
-%%   {ok, {Oauth_hstring}} = build_oath_call(Url, Params),
-%%   io:format("Oauth_hstring = ~s~n", [Oauth_hstring]),
-%%   case httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "Doms123"}, {"Content-Type", "text/html; charset=utf-8"}], "application/x-www-form-urlencoded", Params}, [{autoredirect, false}, {relaxed, true}], [{sync, false}, {stream, self}]) of
-%%     {ok, RequestId} ->
-%%       io:format("starting~n"),
-%%       receive_chunk(RequestId);
-%%     _ ->
-%%       io:format("no work good ~n")
-%%   end.
-  {ok}.
+subscription(Term, Token, Secret) ->
+  Url = "https://stream.twitter.com/1.1/statuses/filter.json",
+  Params_string = "track=" ++ Term,
+  {ok, Oauth_load} = oauth_server:load_settings(),
+  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
+  Oauth_setting = Oauth_load#oauth{oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
+  case httpc:request(post, {Url, [{"Authorization", Oauth_hstring}, {"Accept", "*/*"}, {"User-Agent", "Doms123"},
+    {"Content-Type", "text/html; charset=utf-8"}], "application/x-www-form-urlencoded", Params_string},
+    [], [{sync, false}, {stream, self}]) of
+    {ok, RequestId} ->
+      io:format("starting~n"),
+      receive_chunk(RequestId);
+    _ ->
+      io:format("no work good ~n")
+  end.
 
-receive_chunk(RequestId) ->
+get_subscription(Url, Params, Token, Secret) ->
+  Params_string = params_to_string(Params),
+  {ok, Oauth_load} = oauth_server:load_settings(),
+  {ok, TimeStamp, Once} = oauth_server:get_time_once(),
+  Oauth_setting = Oauth_load#oauth{oauth_http_method = "GET", oauth_token = Token, oauth_token_secret = Secret, oauth_timestamp = TimeStamp, oauth_nonce = Once},
+  {ok, Oauth_hstring} = oauth_server:get_oauth_string(Oauth_setting, Params_string, Url),
+  case httpc:request(get, {Url ++ "?" ++ Params_string,
+    [{"Authorization", Oauth_hstring}, {"Accept", "*/*"},
+      {"User-Agent", "inets"}, {"Content-Type", "text/html; charset=utf-8"}]},
+    [], [{sync, false}, {stream, self}]) of
+    {ok, RequestId} ->
+      io:format("starting~n"),
+      receive_chunk(RequestId);
+    _ ->
+      io:format("no work good ~n")
+  end.
+receive_chunk(RequestId) -> receive_chunk(RequestId, []).
+
+receive_chunk(RequestId, IO) ->
   receive
     {http, {RequestId, {error, Reason}}} when (Reason =:= etimedout) orelse (Reason =:= timeout) ->
       {error, timeout};
@@ -327,11 +356,17 @@ receive_chunk(RequestId) ->
       io:format("Streaming data start ~p ~n", [Headers]),
       receive_chunk(RequestId);
     {http, {RequestId, stream, Data}} ->
-      if
-        Data /= <<"\r\n">> ->
-          get_text(Data);
-        true ->
-          receive_chunk(RequestId)
+      case binary:match(Data, <<"\r\n">>) of
+        nomatch ->
+          receive_chunk(RequestId, [IO, Data]);
+        _ ->
+          if
+            Data /= <<"\r\n">> ->
+              Decoded = jsx:decode(iolist_to_binary([IO, Data])),
+              get_text(Decoded);
+            true ->
+              receive_chunk(RequestId)
+          end
       end,
       receive_chunk(RequestId);
 
@@ -348,14 +383,12 @@ params_to_string([]) ->
   [];
 params_to_string(Param) ->
   Params_list = [atom_to_list(K) ++ "=" ++ http_uri:encode(V) || {K, V} <- Param],
-
   string:join(Params_list, "&").
 
 get_text(Data) ->
-  Decoded = mochijson2:decode(Data),
-  {struct, Jdata} = Decoded,
-  Text = proplists:get_value(<<"text">>, Jdata, <<"Nada~n">>),
-  file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
+  Text = proplists:get_value(<<"text">>, Data, <<"Nada~n">>),
+  io:format("~s~n", [binary_to_list(Text)]).
+% file:write_file("/home/dewolfe/Dropbox/Erlang/armwitter/log/test.txt", binary_to_list(Text)).
 
 
 

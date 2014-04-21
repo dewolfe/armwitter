@@ -20,6 +20,8 @@
 -define(STATUSESRETWEET, "https://api.twitter.com/1.1/statuses/retweet/").
 -define(STATUSESUPDATEWITHMEDIA, "https://api.twitter.com/1.1/statuses/update_with_media.json").
 
+-define(STREAMFILTER, "https://stream.twitter.com/1.1/statuses/filter.json").
+-define(STREAMUSER, "https://userstream.twitter.com/1.1/user.json").
 -record(oauth, {
   oauth_callback = [],
   oauth_consumer_key = [],

@@ -234,10 +234,7 @@ code_change(_OldVsn, State, _Extra) ->
 build_oauth_call(Oauth_setting, Params, Url) ->
   Url_en = http_uri:encode(Url),
   {ok, Param_string} = build_oauth_string(Oauth_setting, Params),
-  io:format("DeBug:Param String is ~s~n", [Param_string]),
   Signature_base_string = string:join([Oauth_setting#oauth.oauth_http_method, Url_en, http_uri:encode(Param_string)], "&"),
-  io:format("DeBug:Signature_base_string is ~s~n", [Signature_base_string]),
-
   Sign_key = string:join([http_uri:encode(Oauth_setting#oauth.oauth_api_secret), http_uri:encode(Oauth_setting#oauth.oauth_token_secret)],
     "&"),
   OAuth_signature = base64:encode_to_string(crypto:hmac(sha, Sign_key, Signature_base_string)),
